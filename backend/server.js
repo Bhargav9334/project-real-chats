@@ -1,13 +1,21 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
+
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '../frontend/dist'))); // or build for CRA
+app.use(cors());
+
+// Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: '*'
+    origin: '*',
+    methods: ['GET', 'POST']
   }
 });
 
@@ -17,7 +25,6 @@ io.on('connection', socket => {
   socket.on('chat message', msg => {
     io.emit('chat message', { user: msg.user, text: msg.text });
 
-    // Bot replies only to user messages
     if (msg.user !== 'Bot') {
       const reply = generateBotReply(msg.text);
       setTimeout(() => {
@@ -31,10 +38,9 @@ io.on('connection', socket => {
   });
 });
 
-// 🌟 Enhanced bot reply logic
+// Bot reply logic
 const generateBotReply = (message) => {
   const msg = message.toLowerCase();
-
   if (msg.includes('hello') || msg.includes('hi') || msg.includes('hlo')) {
     return 'Hey there! 😊 How can I assist you today?';
   }
@@ -56,11 +62,16 @@ const generateBotReply = (message) => {
   if (msg.includes('bye')) {
     return 'Goodbye! 👋 Have a great day!';
   }
-
-  // Default fallback reply
   return 'Interesting! Can you tell me more? 🤔';
 };
 
-server.listen(5001, () => {
-  console.log('🚀 Server is running on http://localhost:5001');
+// Serve frontend for any other route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+// Use dynamic port for Render
+const PORT = process.env.PORT || 5001;
+server.listen(PORT, () => {
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
